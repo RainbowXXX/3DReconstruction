@@ -4,3 +4,6 @@
 [submodule "3rdparty/stats"]
 	path = 3rdparty/stats
 	url = git@github.com:kthohr/stats.git
+[submodule "3rdparty/CMVS-PMVS"]
+	path = 3rdparty/CMVS-PMVS
+	url = https://github.com/pmoulon/CMVS-PMVS.git

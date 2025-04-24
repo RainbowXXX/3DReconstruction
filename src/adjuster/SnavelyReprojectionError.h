@@ -10,70 +10,52 @@
 #include <opencv2/core/types.hpp>
 
 struct SnavelyReprojectionError {
-    [[nodiscard]] SnavelyReprojectionError(const cv::Point2d &observed_point, const double camera_focal_x,
-        const double camera_focal_y, const double camera_center_x, const double camera_center_y)
-        : observed_point_(observed_point),
-          camera_focal_x_(camera_focal_x),
-          camera_focal_y_(camera_focal_y),
-          camera_center_x_(camera_center_x),
-          camera_center_y_(camera_center_y) {
-    }
+    SnavelyReprojectionError(double observed_x, double observed_y)
+        : observed_x(observed_x), observed_y(observed_y) {}
 
     template <typename T>
-    auto operator()(
-        const T *const extrinsic,   // 6
-        const T *const pos3d,       // 3
-        T *residuals
-        ) const
-    {
-        const T *r = extrinsic;
-        const T *t = &extrinsic[4];
+    bool operator()(const T* const camera,      // 3 f, l1, l2
+                    const T* const image,       // 6 r, t
+                    const T* const point,       // 3 x, y, z
+                    T* residuals) const {
+        // camera[0,1,2] are the angle-axis rotation.
+        T p[3];
+        ceres::AngleAxisRotatePoint(image, point, p);
+        // camera[3,4,5] are the translation.
+        p[0] += image[3]; p[1] += image[4]; p[2] += image[5];
 
-        T pos_proj[3];
-        ceres::AngleAxisRotatePoint(r, pos3d, pos_proj);
+        // Compute the center of distortion. The sign change comes from
+        // the camera model that Noah Snavely's Bundler assumes, whereby
+        // the camera coordinate system has a negative z axis.
+        T xp = - p[0] / p[2];
+        T yp = - p[1] / p[2];
 
-        // Apply the camera translation
-        pos_proj[0] += t[0];
-        pos_proj[1] += t[1];
-        pos_proj[2] += t[2];
+        // Apply second and fourth order radial distortion.
+        const T& l1 = camera[1];
+        const T& l2 = camera[2];
+        T r2 = xp*xp + yp*yp;
+        T distortion = 1.0 + r2  * (l1 + l2  * r2);
 
-        const T x = pos_proj[0] / pos_proj[2];
-        const T y = pos_proj[1] / pos_proj[2];
+        // Compute final projected point position.
+        const T& focal = camera[0];
+        T predicted_x = focal * distortion * xp;
+        T predicted_y = focal * distortion * yp;
 
-        const auto fx = camera_focal_x_;
-        const auto fy = camera_focal_y_;
-        const auto cx = camera_center_x_;
-        const auto cy = camera_center_y_;
-
-        // Apply intrinsic
-        const T u = fx * x + cx;
-        const T v = fy * y + cy;
-
-        residuals[0] = u - T(observed_point_.x);
-        residuals[1] = v - T(observed_point_.y);
-
+        // The error is the difference between the predicted and observed position.
+        residuals[0] = predicted_x - T(observed_x);
+        residuals[1] = predicted_y - T(observed_y);
         return true;
     }
 
     // Factory to hide the construction of the CostFunction object from
     // the client code.
-    static auto Create(
-        const cv::Point2d &observed_point,
-        const double camera_focal_x, const double camera_focal_y,
-        const double camera_center_x, const double camera_center_y
-        ) {
-        return new ceres::AutoDiffCostFunction<SnavelyReprojectionError, 2, 6, 3>(new SnavelyReprojectionError{
-            observed_point,
-            camera_focal_x, camera_focal_y,
-            camera_center_x, camera_center_y
-        });
+    static ceres::CostFunction* Create(const double observed_x,
+                                       const double observed_y) {
+        return new ceres::AutoDiffCostFunction<SnavelyReprojectionError, 2, 3, 6, 3>(new SnavelyReprojectionError{observed_x, observed_y});
     }
 
-    cv::Point2d observed_point_;
-    double camera_focal_x_, camera_focal_y_;
-    double camera_center_x_, camera_center_y_;
+    double observed_x;
+    double observed_y;
 };
-
-
 
 #endif // RECONSTRUCTION_SNAVELY_REPROJECTIONE_RROR_H

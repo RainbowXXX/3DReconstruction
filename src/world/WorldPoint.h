@@ -40,6 +40,4 @@ struct WorldPoint {
     }
 };
 
-using WorldPointRef = std::shared_ptr<WorldPoint>;
-
 #endif // RECONSTRUCTION_WORLDPOINT_H

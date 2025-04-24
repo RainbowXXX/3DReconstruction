@@ -67,7 +67,7 @@ public:
         return matches_.size();
     }
 
-    [[nodiscard]] auto get_world_points() const -> const std::vector<WorldPointRef>& {
+    [[nodiscard]] auto get_world_points() const -> const std::vector<WorldPoint::Ptr>& {
         return world_points_;
     }
 

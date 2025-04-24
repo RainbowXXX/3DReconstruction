@@ -16,7 +16,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
+#include <pcl/io/ply_io.h>
 
 #include "../component/Image.h"
 #include "../frame/LocalFrame.h"
@@ -31,16 +31,16 @@ private:
     WorldPoint::Idx cur_idx_ = 0;
 
     std::vector<LocalFrame::Ptr> local_frames_;
-    std::unordered_map<Image::Idx, ImageRef> images_{};
-    std::unordered_map<WorldPoint::Idx, WorldPointRef> world_points_{};
-    std::unordered_map<WorldPoint::Idx, WorldPointRef> adjust_points_{}, fixed_points_{};
+    std::unordered_map<Image::Idx, Image::Ptr> images_{};
+    std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr> world_points_{};
+    std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr> adjust_points_{}, fixed_points_{};
 
     friend class GlobalFrame;
     friend class BundleAdjuster;
 public:
     WorldStructure() = default;
 
-    auto addImage(ImageRef& image) {
+    auto addImage(Image::Ptr& image) {
         images_[image->getIdx()] = image;
     }
 
@@ -65,7 +65,7 @@ public:
         return world_points_.at(idx);
     }
 
-    auto writeToFile(const std::string& file_path) {
+    auto writeToPCDFile(const std::string& file_path) {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         cloud->is_dense = false;
         for (const auto& [idx, point]: world_points_) {
@@ -82,8 +82,33 @@ public:
         pcl::io::savePCDFileASCII (file_path, *cloud);
     }
 
+    auto writeToPLYFile(const std::string& file_path) {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        cloud->is_dense = false;
+        for (const auto& [idx, point]: world_points_) {
+            pcl::PointXYZRGB pointXYZ{point->point_color_[0], point->point_color_[1], point->point_color_[2]};
+
+            pointXYZ.x = static_cast<float>(point->world_pos_(0));
+            pointXYZ.y = static_cast<float>(point->world_pos_(1));
+            pointXYZ.z = static_cast<float>(point->world_pos_(2));
+
+            ensure(isNormal(pointXYZ.x) and isNormal(pointXYZ.y) and isNormal(pointXYZ.z));
+
+            cloud->push_back(pointXYZ);
+        }
+        pcl::io::savePLYFileASCII(file_path, *cloud);
+    }
+
+    auto getWorldPoints() const -> const std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr>& {
+        return world_points_;
+    }
+
+    auto getImages() const -> const std::unordered_map<Image::Idx, Image::Ptr>& {
+        return images_;
+    }
+
     void show(bool debug = false) {
-        static std::unordered_map<WorldPoint::Idx, WorldPointRef> last_points_{};
+        static std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr> last_points_{};
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         cloud->is_dense = false;

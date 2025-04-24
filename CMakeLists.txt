@@ -36,6 +36,7 @@ include_directories(${VTK_INCLUDE_DIRS})
 include_directories(
         3rdparty/spdlog/include
         3rdparty/stats/include
+        3rdparty/OpenMVS/libs
 )
 
 add_executable(3DReconstruction
@@ -50,6 +51,8 @@ add_executable(3DReconstruction
         src/world/WorldPoint.h
         src/component/Camera.h
         src/common/common.h
+        src/denseBuilder/DenseBuilder.h
+        src/denseBuilder/example.h
 )
 
 target_link_libraries(3DReconstruction

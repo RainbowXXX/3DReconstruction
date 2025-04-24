@@ -15,7 +15,10 @@
 #include <spdlog/spdlog.h>
 
 #include<vtkAutoInit.h>
+
+#include "denseBuilder/DenseBuilder.h"
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
+
 VTK_MODULE_INIT(vtkInteractionStyle);
 VTK_MODULE_INIT(vtkRenderingFreeType);
 
@@ -66,7 +69,7 @@ int main() {
         auto camera = std::make_shared<Camera>(camera_matrix);
         for (const auto& image_path: image_paths) {
             cv::Mat img = cv::imread(image_path);
-            images.emplace_back(img, camera);
+            images.emplace_back(img, image_path, camera);
         }
         spdlog::info("Read images done.");
     }
@@ -75,16 +78,19 @@ int main() {
 
     actuator.init(images[0], images[1]);
     actuator.bundleAdjustment();
-    actuator.show(true);
+    // actuator.show(true);
     for (int i = 2;i< images.size();i++) {
         actuator.addSingleImage(images[i]);
         actuator.bundleAdjustment();
-        actuator.show(true);
+        // actuator.show(true);
     }
 
     // auto world = actuator.getWorld();
-    // world->writeToFile("test.pcd");
-    actuator.show();
+    // world->writeToPCDFile("test.pcd");
+    // actuator.show();
+
+    DenseBuilder builder{actuator.getWorld()};
+    builder.save("./output.mvs");
 
     return 0;
 }

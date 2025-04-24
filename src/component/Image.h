@@ -22,6 +22,7 @@ private:
     static inline Idx cur_idx_ = 0;
 
     Idx idx_;
+    std::string name_;
     Camera::Ptr camera_;
     cv::Mat descriptors_;
     cv::Mat image_, desc_mask_;
@@ -31,16 +32,20 @@ private:
 
     std::unordered_map<std::size_t, WorldPoint::Idx> kpt_wpt_idx_map_;
 public:
-    [[nodiscard]] explicit Image(cv::Mat image, Camera::Ptr camera)
-        : image_(std::move(image)), camera_{std::move(camera)}, idx_{cur_idx_++} {
+    [[nodiscard]] explicit Image(cv::Mat image, std::string image_path, Camera::Ptr camera)
+        : idx_{cur_idx_++}, name_{image_path}, camera_{std::move(camera)}, image_(std::move(image)) {
     }
 
-    auto detectAndCompute(cv::Ptr<cv::Feature2D>& detector) {
+    auto detectAndCompute(const cv::Ptr<cv::Feature2D>& detector) {
         detector->detectAndCompute(image_, cv::Mat(), key_points_, descriptors_);
     }
 
     static auto getTotalImages() {
         return cur_idx_;
+    }
+
+    auto getName() const {
+        return name_;
     }
 
     auto getCamera() {
@@ -80,7 +85,7 @@ public:
     }
 
     template<typename T>
-    cv::Matx<T, 1, 3> getAngleAxisWcMatxCV() {
+    cv::Matx<T, 1, 3> getAngleAxisWcMatxCV() const  {
         Eigen::AngleAxisd angleAxis(Tcw.so3().matrix());
         auto axis = angleAxis.angle() * angleAxis.axis();
         cv::Matx<T, 1, 3> angleAxisCV(axis[0],axis[1],axis[2]);
@@ -101,6 +106,19 @@ public:
         return Tcw34;
     }
 
+    cv::Mat getRotationMatrix() const {
+        cv::Mat res;
+        Eigen::Matrix3d R = Tcw.rotationMatrix();
+        cv::eigen2cv(R, res);
+        return res;
+    }
+
+    cv::Vec3d getTranslation() const {
+        Eigen::Vector3d T = Tcw.translation();
+        cv::Vec3d res{T[0], T[1], T[2]};
+        return res;
+    }
+
     [[nodiscard]] Sophus::SE3<double> getTcw() const {
         return Tcw;
     }
@@ -110,7 +128,7 @@ public:
     }
 
     template<typename T>
-    void setTcw(cv::Matx<T,2,3> angleAxisAndTranslation){
+    void setIntrinsic(cv::Matx<T,2,3> angleAxisAndTranslation){
         Eigen::Matrix3d R =
             (Eigen::AngleAxisd(angleAxisAndTranslation(0,0), Eigen::Vector3d::UnitZ()) *
             Eigen::AngleAxisd(angleAxisAndTranslation(0,1), Eigen::Vector3d::UnitY()) *
@@ -122,8 +140,26 @@ public:
                                      angleAxisAndTranslation(1,2));
     }
 
-    auto type() {
+    [[nodiscard]] auto getIntrinsic() const {
+        auto angleAxis = getAngleAxisWcMatxCV<double>();
+        auto translation = getTranslation();
+
+        return cv::Matx<double, 2, 3>(
+            angleAxis(0, 0), angleAxis(0, 1), angleAxis(0, 2),
+            translation(0), translation(1), translation(2)
+            );
+    }
+
+    auto type() const {
         return image_.type();
+    }
+
+    auto width() const {
+        return image_.cols;
+    }
+
+    auto height() const {
+        return image_.rows;
     }
 
     template<typename Ty>
@@ -136,5 +172,4 @@ public:
     }
 };
 
-using ImageRef = std::shared_ptr<Image>;
 #endif // RECONSTRUCTION_IMAGE_H
