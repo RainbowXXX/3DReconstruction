@@ -11,10 +11,9 @@ class GlobalFrame {
     std::vector<cv::DMatch> matches_;
     std::shared_ptr<Image> image_ptr_;
     std::vector<WorldPoint::Ptr> world_points_;
-    std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr>& adjust_points_;
 public:
     [[nodiscard]] GlobalFrame(std::shared_ptr<WorldStructure> world, const std::shared_ptr<Image> &image_ptr)
-        : image_ptr_(image_ptr), adjust_points_(world->adjust_points_) {
+        : image_ptr_(image_ptr) {
         for (auto [idx, point]: world->world_points_) {
             world_points_.emplace_back(point);
         }
@@ -44,17 +43,16 @@ public:
     }
 
     auto filterMatches() {
-        auto minDisIter = std::min_element(
-        matches_.begin(), matches_.end(),
-        [](const cv::DMatch &m1, const cv::DMatch &m2) {
-            return m1.distance < m2.distance;
-        });
+        auto minDisIter = std::ranges::min_element(matches_,
+           [](const cv::DMatch &m1, const cv::DMatch &m2) {
+               return m1.distance < m2.distance;
+           });
 
         auto minDis = minDisIter->distance;
 
         std::vector<cv::DMatch> goodMatches;
         for (auto match: matches_) {
-            if (match.distance > 4 * minDis) continue;
+            if (match.distance > 3 * minDis) continue;
             // if (not adjust_points_.contains(world_points_[match.queryIdx]->idx_)) continue;
             goodMatches.push_back(match);
         }

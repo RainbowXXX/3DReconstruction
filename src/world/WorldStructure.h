@@ -33,7 +33,6 @@ private:
     std::vector<LocalFrame::Ptr> local_frames_;
     std::unordered_map<Image::Idx, Image::Ptr> images_{};
     std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr> world_points_{};
-    std::unordered_map<WorldPoint::Idx, WorldPoint::Ptr> adjust_points_{}, fixed_points_{};
 
     friend class GlobalFrame;
     friend class BundleAdjuster;
@@ -49,7 +48,6 @@ public:
         auto point_idx = cur_idx_++;
         auto point_ref = std::make_shared<WorldPoint>(point_idx, world_pos, color, descriptor);
         world_points_[point_idx] = point_ref;
-        adjust_points_[point_idx] = point_ref;
         return point_idx;
     }
 

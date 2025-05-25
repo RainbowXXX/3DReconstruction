@@ -7,7 +7,7 @@
 
 #include <map>
 
-#include "Interface.h"
+#include <OpenMVS/MVS.h>
 
 #include "../component/Camera.h"
 #include "../world/WorldStructure.h"
@@ -18,6 +18,37 @@ class DenseBuilder {
 public:
     [[nodiscard]] explicit DenseBuilder(const WorldStructure::Ptr &structure)
         : structure_(structure) {
+    }
+
+    static auto writeToPLYFile(const std::string& file_path) {
+        MVS::Interface scene;
+
+        if (!MVS::ARCHIVE::SerializeLoad(scene, "/home/rainbowx/Documents/Projects/3DReconstruction/cmake-build-debug/scene.mvs")) {
+            return false;
+        }
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        cloud->is_dense = false;
+        cloud->emplace_back();
+        // for (int i = 0; i < scene.vertices.size(); i++) {
+        //     auto point = scene.vertices[i].X;
+        //     auto color = scene.verticesColor[i].c;
+        //     pcl::PointXYZRGB pointXYZ{
+        //         color.z,
+        //         color.y,
+        //         color.x
+        //     };
+        //
+        //     pointXYZ.x = point.x;
+        //     pointXYZ.y = point.y;
+        //     pointXYZ.z = point.z;
+        //
+        //     ensure(isNormal(pointXYZ.x) and isNormal(pointXYZ.y) and isNormal(pointXYZ.z));
+        //
+        //     cloud->push_back(pointXYZ);
+        // }
+        pcl::io::savePLYFileASCII(file_path, *cloud);
+        return true;
     }
 
     auto save(const std::string &save_path) {

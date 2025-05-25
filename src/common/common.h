@@ -5,6 +5,11 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <opencv4/opencv2/opencv.hpp>
+
+#include "utils/Event.h"
+#include "utils/ConcurrentQueue.h"
+
 #define MYCALL
 #if CMAKE_BUILD_TYPE == Debug
 #define Crash(...) (__builtin_trap(),0)
@@ -16,6 +21,8 @@
 
 #define ensure(expression) (void)(!!(expression)||Crash())
 #define static_ensure(expression) static_assert(expression)
+
+extern ConcurrentQueue<::Event> event_queue;
 
 inline bool isNormal(const double& x) {
     if (std::isnan(x)) return false;
@@ -64,7 +71,7 @@ inline auto showImage(
 }
 
 // 计算相机内参
-auto [[maybe_unused]] calibrateCameraFromImages(
+inline auto [[maybe_unused]] calibrateCameraFromImages(
         const std::vector<cv::Mat>& images,
         const cv::Size& board_size,
         float square_size,

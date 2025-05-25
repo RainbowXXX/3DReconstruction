@@ -150,20 +150,25 @@ public:
         //解PnP得相机位姿
         std::vector<cv::Point2f> points2DPnP;
         std::vector<cv::Point3f> points3DPnP;
-        // GlobalFrame global_frame{world_structure_, image_ptr2};
-        // global_frame.matchFeatureAndFilter(matcher_);
-        // for (const auto match: global_frame.getMatches()) {
-        //     auto point3D = global_frame.get_world_points()[match.queryIdx]->world_pos_;
+        GlobalFrame global_frame{world_structure_, image_ptr2};
+        global_frame.matchFeatureAndFilter(matcher_);
+        for (const auto match: global_frame.getMatches()) {
+            auto point3D = global_frame.get_world_points()[match.queryIdx]->world_pos_;
+            points2DPnP.push_back(cur_frame_->getImage2()->getKeyPoints()[match.trainIdx].pt);
+            points3DPnP.emplace_back(point3D[0], point3D[1], point3D[2]);
+        }
+        // for (const auto match: cur_frame_->getMatches()) {
+        //     auto kpt_idx = cur_frame_->getImage1()->getWorldPointIdx(match.queryIdx);
+        //     if (kpt_idx == WorldPoint::InvalidIdx) continue;
+        //     auto point3D = world_structure_->getPointFromIdx(kpt_idx)->world_pos_;
+        //
         //     points2DPnP.push_back(cur_frame_->getImage2()->getKeyPoints()[match.trainIdx].pt);
         //     points3DPnP.emplace_back(point3D[0], point3D[1], point3D[2]);
         // }
-        for (const auto match: cur_frame_->getMatches()) {
-            auto kpt_idx = cur_frame_->getImage1()->getWorldPointIdx(match.queryIdx);
-            if (kpt_idx == WorldPoint::InvalidIdx) continue;
-            auto point3D = world_structure_->getPointFromIdx(kpt_idx)->world_pos_;
 
-            points2DPnP.push_back(cur_frame_->getImage2()->getKeyPoints()[match.trainIdx].pt);
-            points3DPnP.emplace_back(point3D[0], point3D[1], point3D[2]);
+        while (points3DPnP.size() < 4) {
+            points3DPnP.emplace_back(points3DPnP[0]);
+            points2DPnP.emplace_back(points2DPnP[0]);
         }
 
         cv::Mat r, t, indexInliers;
